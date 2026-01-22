@@ -12,7 +12,7 @@ class DeviceMapper:
         for reading in self.readings:
             if Avast.check_anomaly_for_reading(reading, devices):
                 deviceid = reading.device_id
-                usage[deviceid] = usage.get(deviceid, 0) + reading.kwh
+                usage[deviceid] = round(usage.get(deviceid, 0) + reading.kwh,4)
         return usage
 
 class RoomMapper:
@@ -26,7 +26,7 @@ class RoomMapper:
         for device_id, kwh in usage_per_device.items():
             room = self.device_to_room.get(device_id, "Unknown")
             if room:
-                usage[room] = usage.get(room, 0.0) + kwh
+                usage[room] = round(usage.get(room, 0.0) + kwh,4)
         return usage
 
 class PersonMapper:
@@ -41,9 +41,9 @@ class PersonMapper:
         for room, kwh in usage_per_room.items():
             person = self.room_to_person.get(room, "Everyone")
             if person in usage:
-                usage[person] += kwh
+                usage[person] += round(kwh,4)
             else:
-                usage["Everyone"] += kwh
+                usage["Everyone"] += round(kwh,4)
         return usage
 
 class DayMapper:
@@ -51,6 +51,7 @@ class DayMapper:
     def __init__(self, readings, device_to_room):
         self.readings = readings
         self.device_to_room = device_to_room
+
     def map(self):
         devices = set(self.device_to_room.keys())
         dates = {}
@@ -58,7 +59,7 @@ class DayMapper:
             if Avast.check_anomaly_for_reading(reading, devices):
                 day = Avast.correct_day(reading)
                 if day:
-                    dates[day] = dates.get(day, 0) + reading.kwh
+                    dates[day] = round(dates.get(day, 0) + reading.kwh,4)
         return dates
 
 class Usage:
@@ -74,24 +75,49 @@ class Usage:
         self.everyone_ids = {person.person_id for person in household_list}
         ## Unia daje nam wszystkie pokoje bez powtórzeń
         ## Tworzymy dwa osobne sety, ponieważ nie wszystkie pokoje zawierają się w klasie Household i nie każde urządzenie ma swojego właściciela
+
     def get_usage_per_device(self):
         mapper = DeviceMapper(self.readings, self.device_map)
         return mapper.map()
+
     def get_usage_per_room(self):
         usage_per_device = self.get_usage_per_device()
         mapper = RoomMapper(self.device_to_room, self.all_rooms)
         return mapper.map(usage_per_device)
+
     def get_usage_per_household(self):
         usage_per_room = self.get_usage_per_room()
         mapper = PersonMapper(self.room_to_person, self.everyone_ids)
         return mapper.map(usage_per_room)
+
     def get_usage_per_day(self):
         return DayMapper(self.readings, self.device_map).map()
 
-    def give_me_that(self):
-        return {
-            "Zużycie na urządzenie: ": self.get_usage_per_device(),
-            "Zużycie na pomieszczenie: ": self.get_usage_per_room(),
-            "Zużycie na domownika: ": self.get_usage_per_household(),
-            "Zużycie na dzień: ": self.get_usage_per_day(),
-        }
+    @staticmethod
+    def get_usage_per_event(events, readings):
+        events_kwh = {}
+        i = 0
+        while i < len(events):
+            if i+1 >= len(events):
+                break
+            start_event = events[i]
+            end_event = events[i+1]
+            if not Avast.check_event_pair(start_event, end_event):
+                i+=1
+                continue
+
+            device_id = start_event.device_id
+            start_date = start_event.date
+            end_date = end_event.date
+            cycle_kwh = 0
+            for reading in readings:
+                if reading.device_id != device_id:
+                    continue
+                reading_date = Avast.correct_day(reading)
+                if start_date <= reading_date <= end_date:
+                    if Avast.scan_for_cost(reading.kwh):
+                        cycle_kwh += reading.kwh
+            events_kwh[device_id] = round(cycle_kwh,4)
+            i+=2
+        return events_kwh
+        ## Avast nie uwzględnia eventów, które się zaczynają, ale nie kończą

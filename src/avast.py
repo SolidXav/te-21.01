@@ -56,13 +56,9 @@ class Avast:
     def check_anomaly_for_efficiency(reading, device_map):
         device_id = reading.device_id
         avg_power_w = reading.avg_power_w
-        rated_power_w = reading.rated_power_w
-        device = device_map[device_id]
         if (device_id is None or
                 device_id not in device_map or
                 avg_power_w is None or
-                avg_power_w < 0 or
-                rated_power_w is None or
-                rated_power_w <= 0):
+                avg_power_w < 0):
             return False
         return True
