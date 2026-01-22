@@ -4,14 +4,14 @@ from usage import *
 from cost import *
 from efficiency import *
 def text_kwh(dane):
-    for id, info in dane.items():
-        print(f"Dla {id} zużycie wyniosło: {info}kWh.")
+    for data, info in dane.items():
+        print(f"Dla {data} zużycie wyniosło: {info}kWh.")
 def text_pln(dane):
-    for id, info in dane.items():
-        print(f"Dla {id} koszt to: {info}zł.")
+    for data, info in dane.items():
+        print(f"Dla {data} koszt to: {info}zł.")
 def text_damaged(dane):
-    for id, info in dane.items():
-        print(f"Urządzenie {id} jest uszkodzone, ponieważ przekroczono wydajność rzędu 100%")
+    for data, info in dane.items():
+        print(f"Urządzenie {data} jest uszkodzone, ponieważ przekroczono wydajność rzędu 100%")
 devices = [Device.from_dict(d) for d in DATASET["devices"]]
 households = [Household.from_dict(h) for h in DATASET["household"]]
 events = [Event.from_dict(e) for e in DATASET["events"]]
